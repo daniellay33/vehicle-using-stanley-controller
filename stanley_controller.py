@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 import random 
 def normalize_angle(angle):
-    """מנרמלת את הזווית לטווח שבין מינוס פאי לפאי"""
     while angle > math.pi: angle -= 2.0 * math.pi
     while angle < -math.pi: angle += 2.0 * math.pi
     return angle
