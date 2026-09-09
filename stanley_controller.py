@@ -2,8 +2,7 @@ import carla
 import math
 import numpy as np
 import cv2
-import random  # הוספנו את הספרייה הזו כדי להגריל נקודות התחלה
-
+import random 
 def normalize_angle(angle):
     """מנרמלת את הזווית לטווח שבין מינוס פאי לפאי"""
     while angle > math.pi: angle -= 2.0 * math.pi
@@ -19,20 +18,20 @@ class VisionStanleyController:
     def compute_errors_from_image(self, cv_image):
         h, w, _ = cv_image.shape
         
-        # 1. סינון צבע ורעשים
+    
         hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
         lower_white = np.array([0, 0, 180], dtype=np.uint8)
         upper_white = np.array([255, 50, 255], dtype=np.uint8)
         mask = cv2.inRange(hsv, lower_white, upper_white)
         edges = cv2.Canny(mask, 50, 150)
         
-        # 2. חיתוך אזור עניין (ROI) - מתמקד רק בחצי התחתון של הכביש
+       
         roi_mask = np.zeros_like(edges)
         polygon = np.array([[(0, h), (int(w*0.2), int(h*0.55)), (int(w*0.8), int(h*0.55)), (w, h)]], dtype=np.int32)
         cv2.fillPoly(roi_mask, polygon, 255)
         masked_edges = cv2.bitwise_and(edges, roi_mask)
         
-        # 3. מציאת קווים מתמטיים בעזרת Hough Transform
+        
         lines = cv2.HoughLinesP(masked_edges, rho=1, theta=np.pi/180, threshold=40, minLineLength=30, maxLineGap=100)
         
         left_lines = []
@@ -55,7 +54,7 @@ class VisionStanleyController:
 
         image_center_x = w / 2.0
         
-        # 4. חילוץ המיקום התחתון ביותר של הקווים
+        
         left_x_bottom = 0
         right_x_bottom = w
         
@@ -76,7 +75,7 @@ class VisionStanleyController:
 
         cv2.circle(debug_img, (int(lane_center_bottom), h-10), 10, (0, 255, 0), -1)
 
-        # 5. חישוב השגיאות למשוואת Stanley
+       
         pixel_error = lane_center_bottom - image_center_x
         e = pixel_error * 0.005 
         
@@ -103,16 +102,16 @@ class VisionStanleyController:
 
 
 def main():
-    # 1. התחברות לשרת ה-CARLA והגדרת זמן המתנה ארוך
+   
     client = carla.Client('localhost', 2000)
     client.set_timeout(60.0)  
     
-    # טעינת מפת הכביש המהיר Town04
+ 
     print("Loading Town04 map... this might take a few seconds. Please wait.")
     world = client.load_world('Town04')
     map = world.get_map()
     
-    # 2. בחירת הרכב
+    
     blueprint_library = world.get_blueprint_library()
     mini_bps = blueprint_library.filter('*mini*')
     if len(mini_bps) > 0:
@@ -121,10 +120,10 @@ def main():
         print("Mini blueprint not found, using Tesla Model 3 instead.")
         vehicle_bp = blueprint_library.filter('model3')[0]
 
-    # 3. יצירת הרכב בנקודה פנויה ואקראית כדי לא להיתקע בחפצים
+ 
     vehicle = None
     spawn_points = map.get_spawn_points()
-    random.shuffle(spawn_points) # מערבב את רשימת נקודות ההתחלה
+    random.shuffle(spawn_points) 
     
     for spawn_point in spawn_points:
         vehicle = world.try_spawn_actor(vehicle_bp, spawn_point)
@@ -135,7 +134,7 @@ def main():
     if vehicle is None:
         raise RuntimeError("Could not spawn vehicle. Make sure the simulator isn't cluttered.")
 
-    # 4. הוספת מצלמת דרך קדמית על הרכב (Dashcam)
+  
     camera_bp = world.get_blueprint_library().find('sensor.camera.rgb')
     camera_bp.set_attribute('image_size_x', '800')
     camera_bp.set_attribute('image_size_y', '600')
@@ -153,14 +152,13 @@ def main():
     controller = VisionStanleyController(k=0.5)
     print("Vision-based Stanley Controller initialized. Starting loop...")
     
-    # שליפת המצלמה הראשית של הסימולטור (Spectator)
+   
     spectator = world.get_spectator()
     
     try:
         while True:
             world.wait_for_tick()
             
-            # עדכון ה-Spectator לזווית ציפור מלמעלה
             transform = vehicle.get_transform()
             spectator_transform = carla.Transform(
                 transform.location + carla.Location(z=20.0),
